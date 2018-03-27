@@ -1,8 +1,10 @@
 ---
-- name: "Add {{ discourse_user }}"
+- name: "Add {{ discourse_user }} to docker group"
   user:
     name: discourse
     state: present
+    groups: docker
+    append: true
 
 - name: check whether the discourse repo is already there
   stat:
@@ -16,11 +18,12 @@
     state: present
   with_items: "{{ prerequisites[ansible_os_family] }}"
 
-- name: Get the discourse repo
+- name: Get the discourse_docker repo
   git:
     repo: git://github.com/discourse/discourse_docker.git
-    dest: /home/discourse/discourse
+    dest: "{{ discourse_path }}"
     version: HEAD
+    force: true
 
 - name: Create the containers directory if it's not there yet.
   file:
@@ -33,4 +36,12 @@
 - name: Update the Discourse container template
   template:
     src: containers/app.yml.j2
-    dest: /home/discourse/discourse/containers/app.yml
+    dest: "{{ discourse_path }}/containers/app.yml"
+    owner: discourse
+
+- name: There's really nothing wrong with devicemapper
+  replace:
+    path: "{{ discourse_path }}/launcher"
+    after:
+    regexp: aufs\|btrfs\|zfs\|overlay\|overlay2
+    replace: aufs|btrfs|zfs|overlay|overlay2|devicemapper
